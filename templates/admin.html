@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - Topup Management</title>
+    <!-- Tambahkan FontAwesome untuk ikon -->
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        /* Tambahkan CSS minimalis agar tampilan rapi */
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .request-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-approve { background: #22c55e; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        .btn-approve:hover { background: #16a34a; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2><i class="fa-solid fa-list-check"></i> Permintaan Top Up</h2>
+    <hr>
+    <div id="listRequests">
+        <p style="text-align: center;">Memuat data...</p>
+    </div>
+</div>
+
+<script>
+    // 1. SESUAIKAN LINK NGROK ANDA
+    const urlBackend = "hhttps://28cd-2404-c0-5a10-00-511-c856.ngrok-free.app";
+
+    // 2. FUNGSI UNTUK MENGAMBIL DATA DARI BACKEND
+    async function loadAdminRequests() {
+        try {
+            // Ganti baris fetch di admin.html menjadi seperti ini:
+const res = await fetch(`${urlBackend}/admin/requests`, {
+    headers: {
+        "ngrok-skip-browser-warning": "69420" // Melewati halaman peringatan Ngrok
+    }
+});
+
+            const data = await res.json();
+            const container = document.getElementById('listRequests');
+            
+            container.innerHTML = ''; // Bersihkan loading text
+
+            if (data.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:gray;">Tidak ada permintaan topup pending.</p>';
+                return;
+            }
+
+            data.forEach(req => {
+                const div = document.createElement('div');
+                div.className = "request-item";
+                div.innerHTML = `
+                    <div>
+                        <strong>${req.toko}</strong><br>
+                        <small>${req.email}</small><br>
+                        <span style="color:#2563eb; font-weight:bold;">Rp ${parseInt(req.jumlah).toLocaleString('id-ID')}</span>
+                    </div>
+                    <button class="btn-approve" onclick="approveTopup(${req.id}, '${req.email}', ${req.jumlah})">
+                        Konfirmasi
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        } catch (e) {
+            console.error("Error:", e);
+            document.getElementById('listRequests').innerHTML = '<p style="color:red">Gagal terhubung ke server!</p>';
+        }
+    }
+
+    // 3. FUNGSI UNTUK MENYETUJUI TOPUP
+    async function approveTopup(idRequest, emailUser, jumlahTopup) {
+        if(!confirm(`Setujui Top Up Rp ${jumlahTopup.toLocaleString()} untuk ${emailUser}?`)) return;
+
+        try {
+            const res = await fetch(`${urlBackend}/admin/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_request: idRequest,
+                    email: emailUser,
+                    jumlah: jumlahTopup
+                })
+            });
+
+            const out = await res.json();
+            if (res.ok) {
+                alert(out.message);
+                loadAdminRequests(); // Refresh daftar otomatis
+            } else {
+                alert("Error: " + out.message);
+            }
+        } catch (e) {
+            alert("Gagal memproses konfirmasi.");
+        }
+    }
+
+    // JALANKAN OTOMATIS SAAT HALAMAN DIBUKA
+    window.onload = loadAdminRequests;
+</script>
+
+</body>
+</html>
